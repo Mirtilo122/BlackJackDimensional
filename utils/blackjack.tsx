@@ -13,6 +13,8 @@ export interface Jogador {
   mao: Carta[];
   pontuacao: number;
   estado: Estado;
+  nome: string;
+  profileImage: string;
 }
 
 
@@ -32,7 +34,7 @@ export async function comprarDuasCartas(deckId: string): Promise<Carta[]> {
   }));
 }
 
-export async function comprarECalcular(deckId: string, maoAtual: Carta[]): Promise<Jogador> {
+export async function comprarECalcular(deckId: string, jogador: Jogador): Promise<Jogador> {
   try {
     const res = await comprarUma(deckId);
     const novaCartaAPI = res.cards[0];
@@ -44,17 +46,18 @@ export async function comprarECalcular(deckId: string, maoAtual: Carta[]): Promi
       image: novaCartaAPI.image || "",
     };
 
-    const novaMao = [...maoAtual, novaCarta];
+    const novaMao = [...jogador.mao, novaCarta];
     const pontuacao = calcularPontuacao(novaMao);
 
     let estado: Estado = "Jogando";
     if (pontuacao > 21) estado = "Estourou";
     else if (pontuacao === 21) estado = "Blackjack";
 
-    return {
+    return {      
+    ...jogador,
       mao: novaMao,
       pontuacao,
-      estado,
+      estado
     };
   } catch (error) {
     console.error("Erro ao comprar e calcular:", error);
@@ -62,11 +65,11 @@ export async function comprarECalcular(deckId: string, maoAtual: Carta[]): Promi
   }
 }
 
-export function parar(maoAtual: Carta[]): Jogador {
-  const pontuacao = calcularPontuacao(maoAtual);
+export function parar(jogador: Jogador): Jogador {
+  const pontuacao = calcularPontuacao(jogador.mao);
 
   return {
-    mao: maoAtual,
+    ...jogador,
     pontuacao,
     estado: "Parado",
   };

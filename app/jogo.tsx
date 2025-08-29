@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Button, StyleSheet, ScrollView, Image } from "react-native";
 import { comprarECalcular, parar, Carta, embaralhar, comprarDuasCartas, calcularPontuacao} from "../utils/blackjack";
-import { Image } from "react-native";
+import { gerarPerfisJogadores } from "./../utils/rick";
 
 interface Jogador {
   mao: Carta[];
   pontuacao: number;
   estado: "Jogando" | "Parado" | "Estourou" | "Blackjack";
+  nome: string;
+  profileImage: string;
 }
 
 export default function Jogo() {
@@ -20,24 +22,25 @@ export default function Jogo() {
       const deck = await embaralhar();
       setDeckId(deck);
 
-      const inicial: Jogador[] = Array(4).fill(null).map(() => ({
-        mao: [],
-        pontuacao: 0,
-        estado: "Jogando",
-      }));
+      const perfis = await gerarPerfisJogadores();
 
-      for (let i = 0; i < inicial.length; i++) {
-        const cartas = await comprarDuasCartas(deck);
-        const pontuacao = calcularPontuacao(cartas);
-        inicial[i] = {
-          mao: cartas,
-          pontuacao,
-          estado: pontuacao === 21 ? "Blackjack" : "Jogando",
-        };
-      }
+      const jogadoresIniciais: Jogador[] = await Promise.all(
+        perfis.map(async (perfil) => {
+          const cartas = await comprarDuasCartas(deck);
+          const pontuacao = calcularPontuacao(cartas);
+          return {
+            mao: cartas,
+            pontuacao,
+            estado: pontuacao === 21 ? "Blackjack" : "Jogando",
+            nome: perfil.nome,
+            profileImage: perfil.profileImage,
+          };
+        })
+      );
 
-      setJogadores(inicial);
+      setJogadores(jogadoresIniciais);
     }
+
     init();
   }, []);
 
@@ -57,7 +60,7 @@ export default function Jogo() {
 
   async function comprarCarta(index: number) {
     const jogador = jogadores[index];
-    const atualizado = await comprarECalcular(deckId as string, jogador.mao);
+    const atualizado = await comprarECalcular(deckId as string, jogador);
 
     const novos = [...jogadores];
     novos[index] = atualizado;
@@ -70,7 +73,7 @@ export default function Jogo() {
 
   function pararJogador(index: number) {
     const jogador = jogadores[index];
-    const atualizado = parar(jogador.mao);
+    const atualizado = parar(jogador);
 
     const novos = [...jogadores];
     novos[index] = atualizado;
@@ -105,6 +108,7 @@ export default function Jogo() {
 
     setVencedores(ganhadores);
   }
+  jogadores.forEach(j => console.log(j.nome, j.profileImage));
 
   return (
     <ScrollView contentContainerStyle={{ padding: 20 }} style={styles.container}>
@@ -113,8 +117,12 @@ export default function Jogo() {
       {jogadores.map((j, idx) => (
         <View key={idx} style={styles.jogadorBox}>
           <Text style={styles.jogadorTitulo}>
-            Jogador {idx + 1} {idx === 0 ? "(Você)" : ""}
+            {j.nome} {idx === 0 ? "(Você)" : ""}
           </Text>
+          <Image
+            source={{ uri: j.profileImage }}
+            style={{ width: 60, height: 60, borderRadius: 30, marginBottom: 5 }}
+          />
           <Text>Pontuação: {j.pontuacao}</Text>
           <Text>Estado: {j.estado}</Text>
 
